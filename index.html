@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Team Action Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --border: #e4e7ec;
+    --text: #0f1923;
+    --muted: #7a8a99;
+    --accent: #1a6ef5;
+    --accent-light: #e8f0fe;
+    --done: #12b76a;
+    --done-light: #d1fadf;
+    --pending: #f79009;
+    --pending-light: #fef3c7;
+    --progress: #1a6ef5;
+    --progress-light: #dbeafe;
+    --blocked: #f04438;
+    --blocked-light: #fee4e2;
+    --header-bg: #0f1923;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: var(--header-bg);
+    padding: 28px 36px 24px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+  .header-label { font-size: 10px; letter-spacing: 3px; color: #5b7fa6; text-transform: uppercase; font-family: 'Syne', sans-serif; margin-bottom: 6px; }
+  .header-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .header-sub { font-size: 12px; color: #5b7fa6; margin-top: 4px; }
+  .header-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  /* STATS */
+  .stats-bar { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .stat-chip {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 8px 16px; text-align: center; min-width: 72px;
+  }
+  .stat-num { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; }
+  .stat-lbl { font-size: 10px; color: #5b7fa6; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+  /* FILTER BAR */
+  .filter-bar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 14px 36px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;
+    position: sticky; top: 122px; z-index: 90;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 5px; }
+  .filter-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  .filter-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+  .pill {
+    padding: 4px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid var(--border); background: #f8fafc; color: var(--muted);
+    transition: all .15s; white-space: nowrap;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+  .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pill.active.done { background: var(--done); border-color: var(--done); }
+  .pill.active.pending { background: var(--pending); border-color: var(--pending); }
+  .pill.active.progress { background: var(--progress); border-color: var(--progress); }
+  .pill.active.blocked { background: var(--blocked); border-color: var(--blocked); }
+
+  .search-input {
+    border: 1.5px solid var(--border); border-radius: 8px; padding: 7px 13px;
+    font-size: 13px; outline: none; width: 230px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; background: #f8fafc;
+    transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--accent); background: #fff; }
+
+  /* MAIN */
+  .main { padding: 24px 36px 60px; max-width: 1140px; margin: 0 auto; }
+
+  /* PROJECT SECTION */
+  .project-section { margin-bottom: 32px; }
+  .project-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    padding-bottom: 8px; border-bottom: 2px solid var(--border);
+  }
+  .project-bar { width: 4px; height: 20px; border-radius: 2px; background: var(--accent); }
+  .project-name { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--text); }
+  .project-count { background: var(--border); color: var(--muted); font-size: 11px; font-weight: 700; border-radius: 99px; padding: 1px 8px; }
+
+  /* ACTION ROW */
+  .action-row {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1.5px solid var(--border); padding: 13px 16px;
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 7px; transition: box-shadow .15s, border-color .15s;
+    border-left-width: 4px;
+  }
+  .action-row:hover { box-shadow: var(--shadow); }
+  .action-row.done-row { opacity: 0.58; }
+
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .action-body { flex: 1; min-width: 0; }
+  .action-text { font-size: 13.5px; font-weight: 500; color: var(--text); line-height: 1.5; }
+  .action-text.striked { text-decoration: line-through; color: var(--muted); }
+  .action-note { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-style: italic; }
+  .note-edit-btn { background: none; border: none; color: #c0cdd9; font-size: 11px; cursor: pointer; padding: 2px 0; margin-top: 3px; display: inline-block; }
+  .note-edit-btn:hover { color: var(--accent); }
+  .delete-btn {
+    flex-shrink: 0; background: none; border: none; color: #d0d9e3; font-size: 15px;
+    cursor: pointer; padding: 2px 4px; border-radius: 5px; line-height: 1;
+    align-self: flex-start; margin-top: 0px; transition: color .15s, background .15s;
+  }
+  .delete-btn:hover { color: var(--blocked); background: var(--blocked-light); }
+
+  .note-edit-row { display: flex; gap: 6px; margin-top: 7px; }
+  .note-input {
+    flex: 1; border: 1.5px solid var(--accent); border-radius: 6px;
+    padding: 5px 10px; font-size: 12px; outline: none; font-family: 'DM Sans', sans-serif;
+  }
+  .btn-save { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .btn-cancel { background: #f1f5f9; color: var(--muted); border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; }
+
+  .owner-badge {
+    flex-shrink: 0; background: var(--accent-light); color: var(--accent);
+    font-size: 11px; font-weight: 700; border-radius: 6px; padding: 3px 9px;
+    white-space: nowrap; align-self: flex-start; margin-top: 1px;
+  }
+
+  .status-select {
+    flex-shrink: 0; border: none; border-radius: 6px; padding: 4px 8px;
+    font-size: 11px; font-weight: 700; cursor: pointer; outline: none;
+    align-self: flex-start; font-family: 'DM Sans', sans-serif;
+  }
+
+  .delete-btn {
+    flex-shrink: 0; background: none; border: none; cursor: pointer;
+    color: #d0d8e4; font-size: 16px; line-height: 1; padding: 2px 4px;
+    border-radius: 5px; align-self: flex-start; margin-top: 1px;
+    transition: color .15s, background .15s; font-weight: 300;
+  }
+  .delete-btn:hover { color: var(--blocked); background: var(--blocked-light); }
+
+  /* CONFIRM DELETE MODAL */
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 1000; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box {
+    background: #fff; border-radius: 12px; padding: 24px 24px 20px;
+    width: 380px; max-width: 92vw; box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+    animation: slideUp .18s ease;
+  }
+  .confirm-icon { font-size: 28px; margin-bottom: 10px; }
+  .confirm-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .confirm-text { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; }
+  .confirm-action { font-weight: 600; color: var(--text); }
+  .confirm-footer { display: flex; justify-content: flex-end; gap: 10px; }
+  .btn-confirm-cancel { background: #f1f5f9; color: var(--muted); border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .btn-confirm-delete { background: var(--blocked); color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .btn-confirm-delete:hover { background: #c0392b; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: none; border-radius: 8px; padding: 9px 16px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all .2s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1559cc; }
+  .btn-ghost { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.15); }
+  .btn-success { background: var(--done); color: #fff; }
+
+  /* ADD ACTION MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 999; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 14px; padding: 28px 28px 24px;
+    width: 520px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: slideUp .2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; font-size: 13px; outline: none;
+    font-family: 'DM Sans', sans-serif; color: var(--text);
+    transition: border-color .15s; background: #f8fafc;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); background: #fff; }
+  .form-textarea { resize: vertical; min-height: 68px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  .btn-modal-cancel { background: #f1f5f9; color: var(--muted); border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .btn-modal-save { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+
+  /* SETUP BANNER */
+  .setup-banner {
+    background: #fffbeb; border: 1.5px solid #fde68a; border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .setup-banner.hidden { display: none; }
+  .setup-icon { font-size: 20px; flex-shrink: 0; }
+  .setup-text { font-size: 13px; color: #92400e; line-height: 1.6; }
+  .setup-text strong { font-weight: 700; }
+  .setup-url-row { display: flex; gap: 8px; margin-top: 10px; }
+  .setup-url-input { flex: 1; border: 1.5px solid #fde68a; border-radius: 7px; padding: 7px 11px; font-size: 12px; outline: none; font-family: monospace; background: #fff; }
+  .setup-url-input:focus { border-color: var(--accent); }
+  .btn-connect { background: var(--accent); color: #fff; border: none; border-radius: 7px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px; background: #1e293b; color: #fff;
+    border-radius: 10px; padding: 12px 20px; font-size: 13px; font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 9999;
+    transform: translateY(80px); opacity: 0; transition: all .3s ease;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 60px 0; color: var(--muted); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty { text-align: center; color: var(--muted); padding: 60px 0; font-size: 14px; }
+
+  /* STATUS COLORS */
+  .s-pending   { background: var(--pending-light);  color: var(--pending); }
+  .s-progress  { background: var(--progress-light); color: var(--progress); }
+  .s-done      { background: var(--done-light);     color: var(--done); }
+  .s-blocked   { background: var(--blocked-light);  color: var(--blocked); }
+  .dot-pending  { background: var(--pending); }
+  .dot-progress { background: var(--progress); }
+  .dot-done     { background: var(--done); }
+  .dot-blocked  { background: var(--blocked); }
+  .border-pending  { border-left-color: var(--pending); }
+  .border-progress { border-left-color: var(--progress); }
+  .border-done     { border-left-color: var(--done); }
+  .border-blocked  { border-left-color: var(--blocked); }
+
+  @media (max-width: 640px) {
+    .header { padding: 18px 16px; }
+    .filter-bar { padding: 12px 16px; top: 106px; }
+    .main { padding: 16px 16px 60px; }
+    .form-row { grid-template-columns: 1fr; }
+    .search-input { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-label">Daily Standup</div>
+      <div class="header-title">Action Tracker</div>
+      <div class="header-sub" id="header-sub">Ananya · Pranav · Himanshu · Manjeet</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" onclick="openModal()">＋ Add Action</button>
+      <button class="btn btn-ghost" onclick="copyEmail()" id="copy-btn">📧 Copy Email Summary</button>
+      <button class="btn btn-ghost" onclick="loadData()" title="Refresh">↻ Refresh</button>
+    </div>
+  </div>
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-chip"><div class="stat-num" style="color:#fff" id="stat-total">—</div><div class="stat-lbl">Total</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:var(--done)" id="stat-done">—</div><div class="stat-lbl">Done</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:var(--progress)" id="stat-progress">—</div><div class="stat-lbl">In Progress</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:var(--pending)" id="stat-pending">—</div><div class="stat-lbl">Pending</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:var(--blocked)" id="stat-blocked">—</div><div class="stat-lbl">Blocked</div></div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <div class="filter-group">
+    <input class="search-input" type="text" id="search" placeholder="🔍 Search actions…" oninput="renderAll()"/>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Owner</div>
+    <div class="filter-pills" id="pills-owner"></div>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Project</div>
+    <div class="filter-pills" id="pills-project"></div>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Status</div>
+    <div class="filter-pills" id="pills-status">
+      <span class="pill active" data-val="All" onclick="setFilter('status','All',this)">All</span>
+      <span class="pill" data-val="Pending" onclick="setFilter('status','Pending',this)">Pending</span>
+      <span class="pill" data-val="In Progress" onclick="setFilter('status','In Progress',this)">In Progress</span>
+      <span class="pill" data-val="Done" onclick="setFilter('status','Done',this)">Done</span>
+      <span class="pill" data-val="Blocked" onclick="setFilter('status','Blocked',this)">Blocked</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- SETUP BANNER -->
+  <div class="setup-banner" id="setup-banner">
+    <div class="setup-icon">⚙️</div>
+    <div class="setup-text">
+      <strong>Connect to Google Sheets to enable live sync.</strong><br>
+      Follow the setup guide below, then paste your Apps Script Web App URL here:
+      <div class="setup-url-row">
+        <input class="setup-url-input" type="text" id="script-url-input" placeholder="https://script.google.com/macros/s/YOUR_ID/exec"/>
+        <button class="btn-connect" onclick="saveScriptUrl()">Connect</button>
+      </div>
+      <div style="margin-top:8px; font-size:11px; color:#b45309;">
+        📄 See the included <strong>SETUP.md</strong> file for step-by-step instructions.
+      </div>
+    </div>
+  </div>
+
+  <div id="content">
+    <div class="loading"><div class="spinner"></div>Loading actions…</div>
+  </div>
+</div>
+
+<!-- ADD ACTION MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">＋ Add New Action</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Project</label>
+        <input class="form-input" id="f-project" list="project-list" placeholder="e.g. Indigo"/>
+        <datalist id="project-list"></datalist>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Owner</label>
+        <input class="form-input" id="f-owner" list="owner-list" placeholder="e.g. Pranav"/>
+        <datalist id="owner-list"></datalist>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Action Item</label>
+      <textarea class="form-textarea" id="f-action" placeholder="Describe the action…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="f-status">
+          <option>Pending</option>
+          <option>In Progress</option>
+          <option>Done</option>
+          <option>Blocked</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <input class="form-input" id="f-note" placeholder="Any context…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-modal-save" onclick="addAction()">Add Action</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────
+const SCRIPT_URL_KEY = 'actiontracker_script_url';
+let SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || '';
+
+// ─── STATE ────────────────────────────────────────────────
+let actions = [];
+let filters = { owner: 'All', project: 'All', status: 'All' };
+let editingNote = null;
+
+// ─── SEED DATA (loaded once if sheet is empty) ─────────────
+const SEED = [
+  {project:'Indigo',owner:'Pranav',action:'Courier Indigo laptops to Yash and Jaydeep – get them to Copains Office',status:'Pending',note:''},
+  {project:'Indigo',owner:'Pranav',action:'Share Efforts for EFB to Himanshu',status:'In Progress',note:'Meeting scheduled'},
+  {project:'Indigo',owner:'Manjeet',action:'Check with Richa regarding CMDB architecture meeting',status:'Pending',note:'She will be back Monday'},
+  {project:'Indigo',owner:'Manjeet',action:'Connect with Pranav & Himanshu for CMDB project update discussion',status:'In Progress',note:'Meeting at 7pm today'},
+  {project:'Indigo',owner:'Manjeet',action:'Give timeline to Anannya Chauhan for the Ports',status:'Pending',note:''},
+  {project:'Indigo',owner:'Ananya',action:'Set up meeting with Pranav, Khayum, and Rinku for Indigo data modelling',status:'Done',note:'Meeting done'},
+  {project:'Indigo',owner:'Ananya',action:'Schedule Internal CMDB Meeting',status:'Done',note:'Scheduled for 7pm today'},
+  {project:'Indigo',owner:'Manjeet',action:'Share sample HLD & LLD document for Rinku to complete',status:'Pending',note:''},
+  {project:'Indigo',owner:'Pranav',action:'Email Indigo team regarding seating arrangements (follow-up)',status:'Pending',note:''},
+  {project:'Indigo',owner:'Pranav',action:'Check requirements for Employee Grievance Portal',status:'Pending',note:''},
+  {project:'Indigo',owner:'Pranav',action:'Check if Autonom8 can be replaced by Copilot',status:'Pending',note:''},
+  {project:'Indigo',owner:'Pranav',action:'PPM project – Involve Kapil Sharma, ask him to Indigo office for 3 days',status:'Pending',note:''},
+  {project:'Indigo',owner:'Pranav',action:'Include Bharath Kumar for Virtual Agent',status:'Pending',note:''},
+  {project:'Indigo',owner:'Ananya',action:'Assign Indigo project to all 5 interns (Harsh reporting to office from today)',status:'In Progress',note:'Laptops in progress by Indigo'},
+  {project:'Indigo',owner:'Pranav',action:'Khayum onboarding – Laptop request',status:'In Progress',note:''},
+  {project:'Indigo',owner:'Ananya',action:'Register HR App and Autonom8 on portal',status:'Pending',note:''},
+  {project:'Coforge',owner:'Manjeet',action:'Ask Prabhat to align Shivam along with Vijay; share Shivam\'s timesheet to Prabhat for approval',status:'Pending',note:''},
+  {project:'Resources & Projects',owner:'Ananya',action:'Connect with Aman for feedback on Satish\'s exam prep',status:'Done',note:'Exam completed, certificate shared with Sonali'},
+  {project:'Resources & Projects',owner:'Manjeet',action:'Share Srijendra & Vijay updates',status:'Done',note:'In sync with both; Srijendra\'s update shared on email'},
+  {project:'Resources & Projects',owner:'Manjeet',action:'Assign Jaydeep as shadow resource with Srijendra',status:'Pending',note:''},
+  {project:'Resources & Projects',owner:'Ananya',action:'Get certificate renewal cost approved with Himanshu – follow up with Manoj',status:'Pending',note:''},
+  {project:'Resources & Projects',owner:'Ananya',action:'Email RMs to coordinate with reportees for CIS-CMDB DF',status:'Pending',note:''},
+  {project:'Resources & Projects',owner:'Ananya',action:'Share list with Pranav for remaining CSA certifications',status:'Pending',note:''},
+  {project:'Resources & Projects',owner:'Manjeet',action:'Plan with Vijay to come to office',status:'Pending',note:''},
+  {project:'Mphasis',owner:'Ananya',action:'Follow up with Kapil to connect with Shariff for Infragenie',status:'Pending',note:''},
+  {project:'Mphasis',owner:'Manjeet',action:'Add more details as suggested by Pankaj & connect with Himani for these details',status:'Pending',note:''},
+];
+
+// ─── INIT ──────────────────────────────────────────────────
+window.onload = () => {
+  if (SCRIPT_URL) {
+    document.getElementById('setup-banner').classList.add('hidden');
+    loadData();
+  } else {
+    // Show seed data locally until connected
+    actions = SEED.map((a,i) => ({...a, id: i+1}));
+    renderAll();
+    document.getElementById('stat-total').textContent = '—';
+  }
+};
+
+function saveScriptUrl() {
+  const url = document.getElementById('script-url-input').value.trim();
+  if (!url.startsWith('http')) { showToast('Please enter a valid URL'); return; }
+  SCRIPT_URL = url;
+  localStorage.setItem(SCRIPT_URL_KEY, url);
+  document.getElementById('setup-banner').classList.add('hidden');
+  loadData();
+  showToast('✓ Connected! Loading data…');
+}
+
+// ─── API ───────────────────────────────────────────────────
+async function api(params) {
+  if (!SCRIPT_URL) return null;
+  try {
+    if (params.action === 'getAll') {
+      const res = await fetch(SCRIPT_URL + '?action=getAll');
+      return await res.json();
+    } else {
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(params)
+      });
+      return await res.json();
+    }
+  } catch(e) {
+    showToast('⚠️ Connection error – working offline');
+    return null;
+  }
+}
+
+async function loadData() {
+  document.getElementById('content').innerHTML = '<div class="loading"><div class="spinner"></div>Loading actions…</div>';
+  const data = await api({ action: 'getAll' });
+  if (data && data.rows) {
+    if (data.rows.length === 0 && SCRIPT_URL) {
+      // Seed the sheet on first load
+      await api({ action: 'seedAll', rows: SEED });
+      await loadData();
+      return;
+    }
+    actions = data.rows;
+  } else if (!SCRIPT_URL) {
+    actions = SEED.map((a,i) => ({...a, id: i+1}));
+  }
+  renderAll();
+}
+
+// ─── RENDER ────────────────────────────────────────────────
+function renderAll() {
+  updateFilters();
+  updateStats();
+  renderActions();
+}
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  return actions.filter(a => {
+    if (filters.owner !== 'All' && a.owner !== filters.owner) return false;
+    if (filters.project !== 'All' && a.project !== filters.project) return false;
+    if (filters.status !== 'All' && a.status !== filters.status) return false;
+    if (q && !a.action.toLowerCase().includes(q) && !a.owner.toLowerCase().includes(q) && !a.project.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function updateStats() {
+  const s = {total:actions.length,'Done':0,'In Progress':0,'Pending':0,'Blocked':0};
+  actions.forEach(a => { if(s[a.status]!==undefined) s[a.status]++; });
+  document.getElementById('stat-total').textContent = s.total;
+  document.getElementById('stat-done').textContent = s['Done'];
+  document.getElementById('stat-progress').textContent = s['In Progress'];
+  document.getElementById('stat-pending').textContent = s['Pending'];
+  document.getElementById('stat-blocked').textContent = s['Blocked'];
+}
+
+function updateFilters() {
+  const owners = ['All', ...new Set(actions.map(a => a.owner).filter(Boolean))];
+  const projects = ['All', ...new Set(actions.map(a => a.project).filter(Boolean))];
+
+  renderPills('pills-owner', owners, 'owner');
+  renderPills('pills-project', projects, 'project');
+
+  // Update datalists for modal
+  const ol = document.getElementById('owner-list');
+  const pl = document.getElementById('project-list');
+  ol.innerHTML = owners.slice(1).map(o => `<option value="${o}">`).join('');
+  pl.innerHTML = projects.slice(1).map(p => `<option value="${p}">`).join('');
+}
+
+function renderPills(containerId, values, filterKey) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = values.map(v => `
+    <span class="pill ${filters[filterKey]===v?'active':''}" onclick="setFilter('${filterKey}','${v}',this)">${v}</span>
+  `).join('');
+}
+
+function setFilter(key, val, el) {
+  filters[key] = val;
+  const container = el.closest('.filter-pills');
+  container.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderActions();
+  updateStats();
+}
+
+function statusClass(s) {
+  if (s==='Done') return 'done'; if (s==='In Progress') return 'progress';
+  if (s==='Pending') return 'pending'; if (s==='Blocked') return 'blocked';
+  return 'pending';
+}
+
+function renderActions() {
+  const filtered = getFiltered();
+  const byProject = {};
+  filtered.forEach(a => { if(!byProject[a.project]) byProject[a.project]=[]; byProject[a.project].push(a); });
+
+  if (filtered.length === 0) {
+    document.getElementById('content').innerHTML = '<div class="empty">No actions match your filters.</div>';
+    return;
+  }
+
+  let html = '';
+  Object.entries(byProject).forEach(([proj, items]) => {
+    html += `<div class="project-section">
+      <div class="project-header">
+        <div class="project-bar"></div>
+        <div class="project-name">${proj}</div>
+        <div class="project-count">${items.length}</div>
+      </div>`;
+    items.forEach(a => {
+      const sc = statusClass(a.status);
+      html += `<div class="action-row ${a.status==='Done'?'done-row':''} border-${sc}" id="row-${a.id}">
+        <div class="status-dot dot-${sc}"></div>
+        <div class="action-body">
+          <div class="action-text ${a.status==='Done'?'striked':''}">${escHtml(a.action)}</div>
+          ${a.note ? `<div class="action-note">💬 ${escHtml(a.note)}</div>` : ''}
+          ${editingNote===a.id ? `
+            <div class="note-edit-row">
+              <input class="note-input" id="note-input-${a.id}" value="${escHtml(a.note||'')}" placeholder="Add a note…" onkeydown="if(event.key==='Enter')saveNote(${a.id})"/>
+              <button class="btn-save" onclick="saveNote(${a.id})">Save</button>
+              <button class="btn-cancel" onclick="cancelNote()">Cancel</button>
+            </div>` : `<button class="note-edit-btn" onclick="startNote(${a.id},'${escAttr(a.note||'')}')">+ ${a.note?'edit note':'add note'}</button>`}
+        </div>
+        <div class="owner-badge">${escHtml(a.owner)}</div>
+        <select class="status-select s-${sc}" onchange="updateStatus(${a.id},this.value,this)">
+          ${['Pending','In Progress','Done','Blocked'].map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <button class="delete-btn" onclick="deleteAction(${a.id})" title="Remove this action">×</button>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  document.getElementById('content').innerHTML = html;
+
+  if (editingNote !== null) {
+    const inp = document.getElementById(`note-input-${editingNote}`);
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  }
+}
+
+// ─── ACTIONS ───────────────────────────────────────────────
+async function updateStatus(id, status, selectEl) {
+  const sc = statusClass(status);
+  selectEl.className = `status-select s-${sc}`;
+  const a = actions.find(x => x.id==id);
+  if (!a) return;
+  a.status = status;
+  const row = document.getElementById('row-'+id);
+  if (row) {
+    row.className = `action-row ${status==='Done'?'done-row':''} border-${sc}`;
+    row.querySelector('.status-dot').className = `status-dot dot-${sc}`;
+    const txt = row.querySelector('.action-text');
+    if (txt) txt.className = `action-text ${status==='Done'?'striked':''}`;
+  }
+  updateStats();
+  await api({ action: 'updateRow', id, field: 'status', value: status });
+  showToast('✓ Status updated');
+}
+
+function startNote(id, currentNote) {
+  editingNote = id;
+  renderActions();
+}
+
+async function saveNote(id) {
+  const inp = document.getElementById(`note-input-${id}`);
+  if (!inp) return;
+  const note = inp.value.trim();
+  const a = actions.find(x => x.id==id);
+  if (a) a.note = note;
+  editingNote = null;
+  renderActions();
+  await api({ action: 'updateRow', id, field: 'note', value: note });
+  showToast('✓ Note saved');
+}
+
+function cancelNote() { editingNote = null; renderActions(); }
+
+async function deleteAction(id) {
+  if (!confirm('Remove this action? This cannot be undone.')) return;
+  actions = actions.filter(a => a.id != id);
+  renderAll();
+  await api({ action: 'deleteRow', id });
+  showToast('✓ Action removed');
+}
+
+// ─── ADD ACTION ────────────────────────────────────────────
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('f-action').focus();
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  ['f-project','f-owner','f-action','f-note'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('f-status').value = 'Pending';
+}
+
+async function addAction() {
+  const project = document.getElementById('f-project').value.trim();
+  const owner   = document.getElementById('f-owner').value.trim();
+  const action  = document.getElementById('f-action').value.trim();
+  const status  = document.getElementById('f-status').value;
+  const note    = document.getElementById('f-note').value.trim();
+  if (!project || !owner || !action) { showToast('Please fill in Project, Owner, and Action'); return; }
+
+  const newRow = { project, owner, action, status, note };
+  const result = await api({ action: 'addRow', row: newRow });
+  const id = result?.id || (Date.now());
+  actions.push({ ...newRow, id });
+  closeModal();
+  renderAll();
+  showToast('✓ Action added');
+}
+
+// ─── EMAIL SUMMARY ─────────────────────────────────────────
+function copyEmail() {
+  const today = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+  const byProject = {};
+  actions.filter(a => a.status !== 'Done').forEach(a => {
+    if (!byProject[a.project]) byProject[a.project] = [];
+    byProject[a.project].push(a);
+  });
+  let text = `Hi Team,\n\nAction item tracker update as of ${today}. Please update your items by EOD.\n\n`;
+  Object.entries(byProject).forEach(([proj, items]) => {
+    text += `📌 ${proj}\n`;
+    items.forEach(a => text += `  • [${a.status}] ${a.action} — ${a.owner}${a.note?' ('+a.note+')':''}\n`);
+    text += '\n';
+  });
+  const done = actions.filter(a => a.status === 'Done');
+  if (done.length) {
+    text += `✅ Completed\n`;
+    done.forEach(a => text += `  • ${a.action} — ${a.owner}${a.note?' ('+a.note+')':''}\n`);
+  }
+  text += `\nRegards,\nTeam`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = '📧 Copy Email Summary', 2500);
+  });
+}
+
+// ─── UTILITIES ─────────────────────────────────────────────
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
